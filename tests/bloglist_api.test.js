@@ -9,79 +9,115 @@ const api = supertest(app);
 
 beforeEach(async () => {
   await Blog.deleteMany({});
-  let blogObject = new Blog(helper.initialBlogs[0]);
-  await blogObject.save();
-  blogObject = new Blog(helper.initialBlogs[1]);
-  await blogObject.save();
+  await Blog.insertMany(helper.initialBlogs);
 });
 
-test('the correct amount of blogs is fetched', async () => {
-  const response = await api
-    .get('/api/blogs')
-    .expect(200)
-    .expect('Content-Type', /application\/json/);
+describe('GET', () => {
+  test('the correct amount of blogs is fetched', async () => {
+    const response = await api
+      .get('/api/blogs')
+      .expect(200)
+      .expect('Content-Type', /application\/json/);
 
-  expect(response.body).toHaveLength(2);
+    expect(response.body).toHaveLength(2);
+  });
+
+  test('a blog has an id property', async () => {
+    const response = await api.get('/api/blogs');
+
+    const blogToVerify = response.body[0];
+    expect(blogToVerify.id).toBeDefined();
+  }, 10000);
 });
 
-test('a blog has an id property', async () => {
-  const response = await api.get('/api/blogs');
+describe('POST', () => {
+  test('a new blog post is correctly added', async () => {
+    const blogsAtStart = await helper.blogsInDb();
 
-  const blogToVerify = response.body[0];
-  expect(blogToVerify.id).toBeDefined();
-}, 10000);
+    const newBlog = {
+      title: 'new title',
+      author: 'new author',
+      url: 'new url',
+      likes: 10,
+    };
 
-test('a new blog post is correctly added', async () => {
-  const blogsAtStart = await helper.blogsInDb();
+    await api
+      .post('/api/blogs')
+      .send(newBlog)
+      .expect(201)
+      .expect('Content-Type', /application\/json/);
 
-  const newBlog = {
-    title: 'new title',
-    author: 'new author',
-    url: 'new url',
-    likes: 10,
-  };
+    const blogsAtEnd = await helper.blogsInDb();
+    const titles = await blogsAtEnd.map((blog) => blog.title);
 
-  await api
-    .post('/api/blogs')
-    .send(newBlog)
-    .expect(201)
-    .expect('Content-Type', /application\/json/);
+    expect(titles).toContain(newBlog.title);
+    expect(blogsAtEnd).toHaveLength(blogsAtStart.length + 1);
+  });
 
-  const blogsAtEnd = await helper.blogsInDb();
-  const titles = await blogsAtEnd.map((blog) => blog.title);
+  test('if likes property is missing in a new blog, it defaults to 0', async () => {
+    const newBlog = {
+      title: 'new title',
+      author: 'new author',
+      url: 'new url',
+    };
 
-  expect(titles).toContain(newBlog.title);
-  expect(blogsAtEnd).toHaveLength(blogsAtStart.length + 1);
+    const response = await api
+      .post('/api/blogs')
+      .send(newBlog)
+      .expect(201)
+      .expect('Content-Type', /application\/json/);
+
+    expect(response.body.likes).toBe(0);
+  });
+
+  test("a new blog without both title and url isn't created and the response is code 400", async () => {
+    const blogsAtStart = await helper.blogsInDb();
+
+    const newBlog = {
+      author: 'new author',
+      likes: 10,
+    };
+
+    await api.post('/api/blogs').send(newBlog).expect(400);
+
+    const blogsAtEnd = await helper.blogsInDb();
+    expect(blogsAtEnd).toHaveLength(blogsAtStart.length);
+  });
 });
 
-test('if likes property is missing in a new blog, it defaults to 0', async () => {
-  const newBlog = {
-    title: 'new title',
-    author: 'new author',
-    url: 'new url',
-  };
+describe('DELETE', () => {
+  test('a blog with valid id is correctly deleted', async () => {
+    const blogsAtStart = await helper.blogsInDb();
+    const blogToDelete = blogsAtStart[0];
 
-  const response = await api
-    .post('/api/blogs')
-    .send(newBlog)
-    .expect(201)
-    .expect('Content-Type', /application\/json/);
+    await api.delete(`/api/blogs/${blogToDelete.id}`).expect(204);
 
-  expect(response.body.likes).toBe(0);
+    const blogsAtEnd = await helper.blogsInDb();
+    const titles = blogsAtEnd.map((blog) => blog.title);
+
+    expect(blogsAtEnd).toHaveLength(blogsAtStart.length - 1);
+    expect(titles).not.toContain(blogToDelete.title);
+  });
 });
 
-test("a new blog without both title and url isn't created and the response is code 400", async () => {
-  const blogsAtStart = await helper.blogsInDb();
+describe('PUT', () => {
+  test('updating the likes of a blog post succeeds', async () => {
+    const blogsAtStart = await helper.blogsInDb();
+    const blogToUpdate = blogsAtStart[0];
 
-  const newBlog = {
-    author: 'new author',
-    likes: 10,
-  };
+    const modifiedBlog = { ...blogToUpdate, likes: blogToUpdate.likes + 1 };
 
-  await api.post('/api/blogs').send(newBlog).expect(400);
+    const response = await api
+      .put(`/api/blogs/${blogToUpdate.id}`)
+      .send(modifiedBlog)
+      .expect(200)
+      .expect('Content-Type', /application\/json/);
 
-  const blogsAtEnd = await helper.blogsInDb();
-  expect(blogsAtEnd).toHaveLength(blogsAtStart.length);
+    const updatedBlog = response.body;
+
+    expect(updatedBlog.title).toBe(blogToUpdate.title);
+    expect(updatedBlog.likes).toBe(modifiedBlog.likes);
+  });
 });
 
 afterAll(() => {
