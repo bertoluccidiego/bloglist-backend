@@ -52,8 +52,6 @@ function mostLikes(blogs) {
     }
   });
 
-  console.log(likesByAuthor);
-
   return likesByAuthor.reduce((mostLikesAuthor, author) =>
     mostLikesAuthor.likes < author.likes ? author : mostLikesAuthor
   );
