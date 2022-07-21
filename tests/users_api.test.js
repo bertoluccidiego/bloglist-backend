@@ -35,11 +35,57 @@ describe('POST', () => {
     expect(usernames).toContain(newUser.username);
   });
 
-  test('an invalid user is not created and is reported', async () => {
+  test('a user without username is not created and is reported', async () => {
     const usersAtStart = await helper.usersInDb();
 
-    // A user without username is invalid
     const newUser = {
+      name: 'Diego C. Bertolucci',
+      password: 'diego',
+    };
+
+    await api.post('/api/users').send(newUser).expect(400);
+
+    const usersAtEnd = await helper.usersInDb();
+
+    expect(usersAtEnd).toHaveLength(usersAtStart.length);
+  });
+
+  test('a user without password is not created and is reported', async () => {
+    const usersAtStart = await helper.usersInDb();
+
+    const newUser = {
+      username: 'diego',
+      name: 'Diego C. Bertolucci',
+    };
+
+    await api.post('/api/users').send(newUser).expect(400);
+
+    const usersAtEnd = await helper.usersInDb();
+
+    expect(usersAtEnd).toHaveLength(usersAtStart.length);
+  });
+
+  test('a user with a password shorter than 3 characters is not created and is reported', async () => {
+    const usersAtStart = await helper.usersInDb();
+
+    const newUser = {
+      username: 'diego',
+      name: 'Diego C. Bertolucci',
+      password: 'di',
+    };
+
+    await api.post('/api/users').send(newUser).expect(400);
+
+    const usersAtEnd = await helper.usersInDb();
+
+    expect(usersAtEnd).toHaveLength(usersAtStart.length);
+  });
+
+  test('a user with a username shorter than 3 characters is not created and is reported', async () => {
+    const usersAtStart = await helper.usersInDb();
+
+    const newUser = {
+      username: 'di',
       name: 'Diego C. Bertolucci',
       password: 'diego',
     };
