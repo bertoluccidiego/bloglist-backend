@@ -15,13 +15,7 @@ blogsRouter.get('/', async (request, response) => {
 });
 
 blogsRouter.post('/', async (request, response) => {
-  const unencryptedToken = jwt.verify(request.token, process.env.SECRET);
-
-  if (!unencryptedToken.id) {
-    return response.status(401).json({ error: 'token missing or invalid' });
-  }
-
-  const user = await User.findById(unencryptedToken.id);
+  const { user } = request;
 
   if (!request.body.title && !request.body.url) {
     return response.status(400).json({ error: 'title and url are missing' });
@@ -39,7 +33,19 @@ blogsRouter.post('/', async (request, response) => {
 });
 
 blogsRouter.delete('/:id', async (request, response) => {
-  await Blog.findByIdAndRemove(request.params.id);
+  const { user } = request;
+  const blog = await Blog.findById(request.params.id);
+
+  if (user._id.toString() !== blog.user.toString()) {
+    return response
+      .status(401)
+      .json({ error: "owner and logged-in user aren't equal" });
+  }
+
+  user.blogs = user.blogs.filter((b) => b.toString() === blog._id.toString());
+  await user.save();
+
+  await Blog.findByIdAndRemove(blog._id);
   response.status(204).end();
 });
 
