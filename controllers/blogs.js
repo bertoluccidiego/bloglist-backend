@@ -17,6 +17,10 @@ blogsRouter.get('/', async (request, response) => {
 blogsRouter.post('/', async (request, response) => {
   const { user } = request;
 
+  if (!user) {
+    throw new AuthorizationError('token missing or invalid');
+  }
+
   const newBlog = new Blog({
     ...request.body,
     user: user._id,
@@ -30,6 +34,7 @@ blogsRouter.post('/', async (request, response) => {
 
 blogsRouter.delete('/:id', async (request, response) => {
   const { user } = request;
+
   const blog = await Blog.findById(request.params.id);
 
   if (user._id.toString() !== blog.user.toString()) {

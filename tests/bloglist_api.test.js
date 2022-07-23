@@ -83,6 +83,29 @@ describe('POST', () => {
     const blogsAtEnd = await helper.blogsInDb();
     expect(blogsAtEnd).toHaveLength(blogsAtStart.length);
   });
+
+  test("a new blog without a token isn't added and reponds 401", async () => {
+    const blogsAtStart = await helper.blogsInDb();
+
+    const newBlog = {
+      title: 'new title',
+      author: 'new author',
+      url: 'new url',
+      likes: 10,
+    };
+
+    const response = await api
+      .post('/api/blogs')
+      .send(newBlog)
+      .expect(401)
+      .expect('Content-Type', /application\/json/);
+
+    console.log(response.body);
+    const blogsAtEnd = await helper.blogsInDb();
+
+    //expect(response.body.error).toBe('invalid token');
+    expect(blogsAtEnd).toHaveLength(blogsAtStart.length);
+  });
 });
 
 describe('DELETE', () => {
