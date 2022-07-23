@@ -1,9 +1,9 @@
 const jwt = require('jsonwebtoken');
 
+const { AuthorizationError } = require('../utils/errors');
 const blogsRouter = require('express').Router();
 
 const Blog = require('../models/blog');
-const User = require('../models/user');
 
 blogsRouter.get('/', async (request, response) => {
   const blogs = await Blog.find({}).populate('user', {
@@ -16,10 +16,6 @@ blogsRouter.get('/', async (request, response) => {
 
 blogsRouter.post('/', async (request, response) => {
   const { user } = request;
-
-  if (!request.body.title && !request.body.url) {
-    return response.status(400).json({ error: 'title and url are missing' });
-  }
 
   const newBlog = new Blog({
     ...request.body,
@@ -37,9 +33,7 @@ blogsRouter.delete('/:id', async (request, response) => {
   const blog = await Blog.findById(request.params.id);
 
   if (user._id.toString() !== blog.user.toString()) {
-    return response
-      .status(401)
-      .json({ error: "owner and logged-in user aren't equal" });
+    throw new AuthorizationError("logged-in user isn't the owner of the blog");
   }
 
   user.blogs = user.blogs.filter((b) => b.toString() === blog._id.toString());
