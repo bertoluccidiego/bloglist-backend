@@ -49,13 +49,23 @@ blogsRouter.delete('/:id', async (request, response) => {
 });
 
 blogsRouter.put('/:id', async (request, response) => {
+  const { user } = request;
+
+  if (!user) {
+    throw new AuthorizationError('token missing or invalid');
+  }
+
   const modifiedBlog = request.body;
 
   const updatedBlog = await Blog.findByIdAndUpdate(
     request.params.id,
     { ...modifiedBlog },
     { new: true, runValidators: true, context: 'query' }
-  );
+  ).populate('user', {
+    username: 1,
+    name: 1,
+    id: 1,
+  });
 
   response.json(updatedBlog);
 });
